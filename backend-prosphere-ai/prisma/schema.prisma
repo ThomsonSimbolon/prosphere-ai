@@ -1,0 +1,171 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model DeviceSession {
+  id                String    @id @default(uuid())
+  sessionName       String    @unique
+  phoneNumber       String?
+  status            String    @default("DISCONNECTED") // DISCONNECTED | QR_READY | CONNECTED
+  batteryPercentage Int?      @default(100)
+  qrCode            String?   @db.Text
+  lastConnectedAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  messages          Message[]
+
+  @@map("device_sessions")
+}
+
+model ContactGroup {
+  id          String    @id @default(uuid())
+  name        String
+  description String?   @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  contacts    Contact[]
+
+  @@map("contact_groups")
+}
+
+model Contact {
+  id            String        @id @default(uuid())
+  name          String
+  phoneNumber   String        @unique
+  tags          String?       // Comma separated or JSON string
+  groupId       String?
+  group         ContactGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  lastActiveAt  DateTime?     @default(now())
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  messages      Message[]
+  leads         Lead[]
+  bookings      Booking[]
+
+  @@map("contacts")
+}
+
+model Message {
+  id              String         @id @default(uuid())
+  sessionId       String?
+  session         DeviceSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  contactId       String?
+  contact         Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  campaignId      String?
+  campaign        Campaign?      @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  direction       String         @default("OUTBOUND") // INBOUND | OUTBOUND
+  status          String         @default("SENT")     // PENDING | SENT | DELIVERED | READ | FAILED
+  messageType     String         @default("TEXT")     // TEXT | IMAGE | DOCUMENT
+  content         String         @db.Text
+  mediaUrl        String?
+  timestamp       DateTime       @default(now())
+
+  @@map("messages")
+}
+
+model Campaign {
+  id           String    @id @default(uuid())
+  title        String
+  targetGroup  String
+  status       String    @default("DRAFT") // DRAFT | RUNNING | COMPLETED | PAUSED
+  totalTarget  Int       @default(0)
+  sentCount    Int       @default(0)
+  failedCount  Int       @default(0)
+  delaySeconds Int       @default(5)
+  messageText  String    @db.Text
+  scheduledAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  messages     Message[]
+
+  @@map("campaigns")
+}
+
+model Lead {
+  id          String   @id @default(uuid())
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  name        String
+  company     String?
+  source      String   @default("WhatsApp Inbound")
+  stage       String   @default("NEW") // NEW | CONTACTED | QUALIFIED | CLOSED_WON
+  value       Decimal  @default(0.00) @db.Decimal(12, 2)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("leads")
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  clientName  String
+  clientPhone String
+  serviceName String
+  scheduledAt DateTime
+  status      String   @default("CONFIRMED") // CONFIRMED | PENDING | CANCELLED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("bookings")
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  title     String
+  category  String   @default("General")
+  content   String   @db.Text
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("templates")
+}
+
+model AiSetting {
+  id             String   @id @default("default")
+  modelName      String   @default("Gemini 1.5 Pro")
+  temperature    Float    @default(0.7)
+  systemPrompt   String   @db.Text
+  humanFallback  Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
+
+  @@map("ai_settings")
+}
+
+model ChatbotFlow {
+  id          String   @id @default(uuid())
+  name        String
+  trigger     String
+  stepsCount  Int      @default(3)
+  isActive    Boolean  @default(true)
+  executions  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("chatbot_flows")
+}
+
+model ScheduledJob {
+  id          String   @id @default(uuid())
+  title       String
+  cron        String
+  target      String
+  status      String   @default("ACTIVE") // ACTIVE | PAUSED
+  nextRun     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("scheduled_jobs")
+}

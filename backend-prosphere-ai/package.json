@@ -1,0 +1,39 @@
+{
+  "name": "backend-prosphere-ai",
+  "version": "1.0.0",
+  "description": "Enterprise Backend for ProSphere AI WhatsApp Automation & CRM Platform",
+  "main": "src/server.ts",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:clean": "tsx scripts/clear-database.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@google/genai": "^3.6.1",
+    "@google/generative-ai": "^0.24.0",
+    "@prisma/client": "^6.4.1",
+    "@whiskeysockets/baileys": "6.7.24",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.8.1",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.9",
+    "@types/qrcode": "^1.5.5",
+    "prisma": "^6.4.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

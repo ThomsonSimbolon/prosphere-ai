@@ -1,0 +1,16 @@
+{
+  "projectId": "9869041570703278529",
+  "projectTitle": "ProSphere AI Dashboard",
+  "screenId": "2667a438815d403999ace04b5accbfec",
+  "screenTitle": "ProSphere AI - Dashboard",
+  "deviceType": "DESKTOP",
+  "screenType": "DESIGN",
+  "dimensions": {
+    "width": 2560,
+    "height": 2048
+  },
+  "files": {
+    "html": "index.html",
+    "screenshot": "screenshot.png"
+  }
+}
