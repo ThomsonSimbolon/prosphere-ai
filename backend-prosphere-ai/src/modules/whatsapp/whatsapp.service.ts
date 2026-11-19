@@ -9,6 +9,8 @@ import fs from 'fs';
 import { prisma } from '../../config/prisma.js';
 import { Server } from 'socket.io';
 import { AntiBanUtil } from './antiban.util.js';
+import { aiService } from '../ai/ai.service.js';
+import { logActivity } from '../logs/logs.service.js';
 
 export class WhatsAppService {
   private socket: WASocket | null = null;
@@ -124,24 +126,25 @@ export class WhatsAppService {
         }
       });
 
-      // Listen for incoming messages
+      // Listen for incoming messages & Trigger Autonomous AI Sales Agent
       this.socket.ev.on('messages.upsert', async (m) => {
         if (m.type === 'notify') {
           for (const msg of m.messages) {
             if (!msg.key.fromMe && msg.message) {
               const from = msg.key.remoteJid;
-              const text =
-                msg.message.conversation ||
-                msg.message.extendedTextMessage?.text ||
-                '';
+              // Abaikan chat grup dan status broadcast WhatsApp
+              if (from && !from.includes('@g.us') && !from.includes('status@broadcast')) {
+                const text =
+                  msg.message.conversation ||
+                  msg.message.extendedTextMessage?.text ||
+                  '';
 
-              console.log(`📩 Inbound WhatsApp from ${from}: ${text}`);
+                const pushName = msg.pushName || 'Pelanggan WhatsApp';
+                console.log(`📩 Inbound WhatsApp from ${from} (${pushName}): ${text}`);
 
-              if (this.io) {
-                this.io.emit('whatsapp:message:inbound', {
-                  from,
-                  text,
-                  timestamp: new Date(),
+                // Jalankan Inbound AI Auto-Reply secara asinkron
+                this.handleInboundAiReply(from, text, pushName).catch((err) => {
+                  console.error('Error executing Inbound AI Auto-Reply:', err);
                 });
               }
             }
@@ -286,6 +289,134 @@ export class WhatsAppService {
         spintaxApplied: true,
       },
     };
+  }
+
+  async handleInboundAiReply(fromJid: string, text: string, pushName: string) {
+    if (!text || text.trim().length === 0) return;
+
+    try {
+      const cleanDigits = fromJid.replace(/[^0-9]/g, '');
+      const phoneNumber = cleanDigits.startsWith('+') ? cleanDigits : `+${cleanDigits}`;
+
+      // 1. Dapatkan sesi device aktif
+      const session = await prisma.deviceSession.findUnique({
+        where: { sessionName: 'default-session' },
+      });
+
+      // 2. Upsert kontak pelanggan di database MySQL
+      let contact = await prisma.contact.findUnique({
+        where: { phoneNumber },
+      });
+
+      if (!contact) {
+        contact = await prisma.contact.create({
+          data: {
+            name: pushName || phoneNumber,
+            phoneNumber,
+            tags: 'Inbound Prospek',
+            lastActiveAt: new Date(),
+          },
+        });
+      } else {
+        await prisma.contact.update({
+          where: { id: contact.id },
+          data: {
+            name: contact.name.startsWith('+') && pushName ? pushName : contact.name,
+            lastActiveAt: new Date(),
+          },
+        });
+      }
+
+      // 3. Simpan pesan masuk (INBOUND) ke tabel messages
+      const inboundMsg = await prisma.message.create({
+        data: {
+          sessionId: session?.id || null,
+          contactId: contact.id,
+          direction: 'INBOUND',
+          status: 'READ',
+          content: text,
+          timestamp: new Date(),
+        },
+      });
+
+      // 4. Emit event real-time ke frontend (Chat History & Dashboard)
+      if (this.io) {
+        this.io.emit('whatsapp:message:inbound', {
+          from: fromJid,
+          text,
+          contactId: contact.id,
+          timestamp: new Date(),
+        });
+        this.io.emit('chats:new_message', {
+          contactId: contact.id,
+          message: inboundMsg,
+        });
+      }
+
+      // 5. Periksa konfigurasi AI
+      const aiSetting = await aiService.getSettings();
+      if (aiSetting.humanFallback === false) {
+        console.log(`⏸️ AI Auto-Reply sedang dijeda oleh pengaturan admin.`);
+        return;
+      }
+
+      // 6. Generate respon cerdas dari Google Gemini AI
+      console.log(`🤖 AI Sales Agent sedang menganalisis pesan dari ${phoneNumber}...`);
+      const aiReply = await aiService.generateResponse(text);
+
+      // 7. Terapkan 5-Layer Anti-Ban & Human Simulation
+      // Jeda membaca pesan (1.5 - 3 detik)
+      const readDelay = AntiBanUtil.getHumanJitterMs(2);
+      await AntiBanUtil.sleep(readDelay);
+
+      // Simulasi status mengetik ('composing') di WhatsApp pelanggan
+      if (this.socket) {
+        try {
+          await this.socket.presenceSubscribe(fromJid);
+          await this.socket.sendPresenceUpdate('composing', fromJid);
+          const typingDuration = AntiBanUtil.calculateTypingDurationMs(aiReply.length);
+          console.log(`⏳ AI Typing Presence ke ${fromJid} selama ${typingDuration}ms...`);
+          await AntiBanUtil.sleep(typingDuration);
+          await this.socket.sendPresenceUpdate('paused', fromJid);
+        } catch (presErr) {
+          console.warn('Presence simulation warning:', presErr);
+        }
+
+        // Kirim pesan balasan AI ke WhatsApp pelanggan
+        await this.socket.sendMessage(fromJid, { text: aiReply });
+        console.log(`🚀 [AI AUTO-REPLY TERKIRIM] ke ${phoneNumber}: "${aiReply}"`);
+      }
+
+      // 8. Simpan pesan balasan AI (OUTBOUND) ke tabel messages
+      const outboundMsg = await prisma.message.create({
+        data: {
+          sessionId: session?.id || null,
+          contactId: contact.id,
+          direction: 'OUTBOUND',
+          status: 'DELIVERED',
+          content: aiReply,
+          timestamp: new Date(),
+        },
+      });
+
+      // 9. Emit event outbound ke UI Chat History
+      if (this.io) {
+        this.io.emit('chats:new_message', {
+          contactId: contact.id,
+          message: outboundMsg,
+        });
+      }
+
+      // 10. Catat aktivitas ke tabel activity_logs
+      await logActivity({
+        actorName: 'ProSphere AI Sales Agent',
+        actorEmail: 'ai-agent@prosphere.ai',
+        action: 'AI_AUTO_REPLY',
+        details: `Otomatis membalas pesan prospek ${contact.name} (${phoneNumber}): "${text}" -> "${aiReply.substring(0, 80)}..."`,
+      });
+    } catch (err: any) {
+      console.error('Failed to handle inbound AI auto-reply:', err?.message || err);
+    }
   }
 }
 
