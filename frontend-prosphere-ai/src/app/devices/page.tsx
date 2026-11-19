@@ -54,12 +54,12 @@ export default function DevicesPage() {
             setShowQR(false);
             setFeedback(`WhatsApp berhasil terhubung dengan nomor ${session.phoneNumber || ''}!`);
             clearInterval(interval);
-          } else if (session.qrCode && !qrCodeData) {
+          } else if (session.qrCode && (!qrCodeData || qrCodeData !== session.qrCode)) {
             setQrCodeData(session.qrCode);
           }
         }
       }
-    }, 2500);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, [showQR, qrCodeData]);
@@ -68,6 +68,7 @@ export default function DevicesPage() {
     setShowQR(true);
     setIsInitializing(true);
     setFeedback(null);
+    setQrCodeData(null);
     try {
       const res = await api.startDeviceSession();
       if (res && res.data && res.data.qrCode) {
@@ -76,8 +77,9 @@ export default function DevicesPage() {
       await loadDevices();
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsInitializing(false);
     }
-    setIsInitializing(false);
   };
 
   const handleDisconnect = async () => {

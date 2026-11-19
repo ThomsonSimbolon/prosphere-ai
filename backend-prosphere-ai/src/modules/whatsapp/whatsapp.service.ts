@@ -31,12 +31,46 @@ export class WhatsAppService {
     this.io = io;
   }
 
-  async initSession() {
+  async initSession(forceFresh: boolean = false) {
+    if (forceFresh) {
+      if (this.socket) {
+        try {
+          this.socket.end(undefined);
+        } catch {}
+        this.socket = null;
+      }
+      this.isConnecting = false;
+      this.qrCodeDataUrl = null;
+
+      // Clean stale session directory
+      if (fs.existsSync(this.sessionDir)) {
+        try {
+          fs.rmSync(this.sessionDir, { recursive: true, force: true });
+          fs.mkdirSync(this.sessionDir, { recursive: true });
+        } catch (e) {
+          console.warn('Failed to reset session dir:', e);
+        }
+      }
+    }
+
     if (this.isConnecting || this.socket) return;
     this.isConnecting = true;
     this.isExplicitlyDisconnected = false;
 
     try {
+      // Periksa jika database tidak dalam status CONNECTED tetapi ada file creds lama yang expired/corrupt
+      const existingSession = await prisma.deviceSession.findUnique({
+        where: { sessionName: 'default-session' },
+      });
+      const credsPath = path.join(this.sessionDir, 'creds.json');
+      if ((!existingSession || existingSession.status !== 'CONNECTED') && fs.existsSync(credsPath)) {
+        console.log('🧹 Membersihkan kredensial sesi lama agar Baileys membuat QR Code baru...');
+        try {
+          fs.rmSync(this.sessionDir, { recursive: true, force: true });
+          fs.mkdirSync(this.sessionDir, { recursive: true });
+        } catch {}
+      }
+
       const { state, saveCreds } = await useMultiFileAuthState(this.sessionDir);
 
       this.socket = makeWASocket({
@@ -69,16 +103,17 @@ export class WhatsAppService {
                 batteryPercentage: 94,
               },
             });
-            console.log('📲 QR Code generated and saved to MySQL device_sessions');
+            console.log('📲 QR Code berhasil dibuat dan disimpan ke MySQL device_sessions');
           } catch (err) {
             console.error('Failed to generate QR data URL:', err);
           }
         }
 
         if (connection === 'close') {
+          const statusCode = (lastDisconnect?.error as any)?.output?.statusCode;
           const shouldReconnect =
-            (lastDisconnect?.error as any)?.output?.statusCode !== DisconnectReason.loggedOut;
-          console.log('WhatsApp connection closed. Reconnect:', shouldReconnect);
+            statusCode !== DisconnectReason.loggedOut && statusCode !== 401 && statusCode !== 428;
+          console.log(`WhatsApp connection closed (status ${statusCode}). Reconnect:`, shouldReconnect);
 
           await prisma.deviceSession.updateMany({
             where: { sessionName: 'default-session' },
@@ -87,8 +122,20 @@ export class WhatsAppService {
 
           this.socket = null;
           this.isConnecting = false;
+          this.qrCodeDataUrl = null;
+
           if (this.io) {
             this.io.emit('whatsapp:status', { status: 'DISCONNECTED' });
+          }
+
+          // Bersihkan file session jika sesi expired atau logout agar next start menghasilkan QR baru
+          if (!shouldReconnect) {
+            if (fs.existsSync(this.sessionDir)) {
+              try {
+                fs.rmSync(this.sessionDir, { recursive: true, force: true });
+                fs.mkdirSync(this.sessionDir, { recursive: true });
+              } catch {}
+            }
           }
 
           if (shouldReconnect && !this.isExplicitlyDisconnected) {
@@ -171,7 +218,7 @@ export class WhatsAppService {
     );
   }
 
-  async waitForQrCode(timeoutMs = 4000): Promise<string | null> {
+  async waitForQrCode(timeoutMs = 6000): Promise<string | null> {
     if (this.qrCodeDataUrl) return this.qrCodeDataUrl;
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {

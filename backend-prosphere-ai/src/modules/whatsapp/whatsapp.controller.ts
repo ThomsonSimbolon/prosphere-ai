@@ -16,9 +16,10 @@ export async function getDevices(req: Request, res: Response) {
 
 export async function startSession(req: Request, res: Response) {
   try {
-    whatsappService.initSession();
-    // Wait for Baileys to produce QR code (up to 3.5s)
-    const qrCode = await whatsappService.waitForQrCode(3500);
+    // Inisialisasi ulang sesi WhatsApp dengan fresh state agar Baileys membuat QR code baru
+    await whatsappService.initSession(true);
+    // Tunggu Baileys menghasilkan QR Code (maks 5.5 detik)
+    const qrCode = await whatsappService.waitForQrCode(5500);
     const status: any = await whatsappService.getSessionStatus();
     return res.status(200).json({
       success: true,
