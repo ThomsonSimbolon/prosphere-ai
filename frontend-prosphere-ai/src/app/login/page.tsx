@@ -1,18 +1,27 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { Icon } from '@/components/ui/Icon';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, user, isAuthenticated, getDefaultRedirectForRole } = useAuth();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Jika pengguna sudah dalam keadaan login, alihkan langsung ke menu perannya
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      router.replace(getDefaultRedirectForRole(user.role));
+    }
+  }, [isAuthenticated, user, router, getDefaultRedirectForRole]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -254,7 +263,7 @@ export default function LoginPage() {
                 </>
               ) : (
                 <>
-                  <span>Masuk ke Dashboard ProSphere</span>
+                  <span>Masuk ke ProSphere AI</span>
                   <Icon name="arrow_forward" size={18} />
                 </>
               )}

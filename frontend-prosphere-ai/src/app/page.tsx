@@ -3,11 +3,22 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
+import { useAuth } from '@/context/AuthContext';
 
 export default function LandingPage() {
+  const { user, isAuthenticated, getDefaultRedirectForRole } = useAuth();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const [activeTab, setActiveTab] = useState<'ecommerce' | 'property' | 'services'>('ecommerce');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const targetAppUrl = isAuthenticated && user ? getDefaultRedirectForRole(user.role) : '/login';
+  const ctaButtonText = isAuthenticated && user
+    ? user.role === 'SUPER_ADMIN'
+      ? 'Buka Dashboard ProSphere'
+      : user.role === 'STAFF_SALES_CS'
+      ? 'Buka Chat & CRM Deals'
+      : 'Buka Broadcast & Templates'
+    : 'Mulai Uji Coba Gratis';
 
   const faqs = [
     {
@@ -73,19 +84,31 @@ export default function LandingPage() {
 
           {/* Right Action CTA */}
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-on-surface hover:text-primary transition-colors"
-            >
-              <span>Portal Masuk</span>
-            </Link>
-            <Link
-              href="/login"
-              className="flex items-center gap-2 bg-primary text-[#1f3700] font-bold px-4 py-2.5 rounded-xl hover:opacity-90 transition-all shadow-[0_0_20px_rgba(158,233,57,0.35)] text-sm"
-            >
-              <span>Buka Dashboard</span>
-              <Icon name="arrow_forward" size={16} />
-            </Link>
+            {!isAuthenticated ? (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-on-surface hover:text-primary transition-colors"
+                >
+                  <span>Portal Masuk</span>
+                </Link>
+                <Link
+                  href="/login"
+                  className="flex items-center gap-2 bg-primary text-[#1f3700] font-bold px-4 py-2.5 rounded-xl hover:opacity-90 transition-all shadow-[0_0_20px_rgba(158,233,57,0.35)] text-sm"
+                >
+                  <span>Masuk Akun</span>
+                  <Icon name="login" size={16} />
+                </Link>
+              </>
+            ) : (
+              <Link
+                href={targetAppUrl}
+                className="flex items-center gap-2 bg-primary text-[#1f3700] font-bold px-4 py-2.5 rounded-xl hover:opacity-90 transition-all shadow-[0_0_20px_rgba(158,233,57,0.35)] text-sm"
+              >
+                <span>{ctaButtonText}</span>
+                <Icon name="arrow_forward" size={16} />
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -114,11 +137,11 @@ export default function LandingPage() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center gap-4 mb-16 w-full sm:w-auto">
           <Link
-            href="/dashboard"
+            href={targetAppUrl}
             className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-primary text-[#1f3700] font-bold px-8 py-4 rounded-xl text-base hover:opacity-90 transition-all shadow-[0_0_25px_rgba(158,233,57,0.4)]"
           >
             <Icon name="rocket_launch" size={20} />
-            <span>Mulai Uji Coba Dashboard Gratis</span>
+            <span>{ctaButtonText}</span>
           </Link>
           <a
             href="https://wa.me/"
@@ -186,10 +209,10 @@ export default function LandingPage() {
                 <span className="text-xs text-outline font-mono ml-2">prosphere-ai-telemetry://dashboard</span>
               </div>
               <Link
-                href="/dashboard"
+                href={targetAppUrl}
                 className="text-xs text-primary hover:underline flex items-center gap-1 font-semibold"
               >
-                <span>Buka Versi Penuh</span>
+                <span>{isAuthenticated ? 'Buka Ruang Kerja' : 'Masuk Aplikasi'}</span>
                 <Icon name="open_in_new" size={14} />
               </Link>
             </div>
@@ -223,8 +246,8 @@ export default function LandingPage() {
                 <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                 <span>1 Perangkat WhatsApp Terhubung & AI Sales Agent Aktif</span>
               </div>
-              <Link href="/dashboard" className="text-primary font-bold hover:underline">
-                Eksplorasi Semua Fitur →
+              <Link href={targetAppUrl} className="text-primary font-bold hover:underline">
+                {isAuthenticated ? 'Buka Fitur Anda →' : 'Eksplorasi Semua Fitur →'}
               </Link>
             </div>
           </div>
@@ -579,7 +602,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <Link
-              href="/dashboard"
+              href={targetAppUrl}
               className="mt-8 block text-center py-3 rounded-xl border border-[#424936] text-on-surface font-semibold hover:border-primary hover:text-primary transition-colors text-xs"
             >
               Pilih Paket Starter
@@ -624,7 +647,7 @@ export default function LandingPage() {
               </ul>
             </div>
             <Link
-              href="/dashboard"
+              href={targetAppUrl}
               className="mt-8 block text-center py-3.5 rounded-xl bg-primary text-[#1f3700] font-bold hover:opacity-90 transition-opacity text-xs shadow-[0_0_15px_rgba(158,233,57,0.3)]"
             >
               Mulai Free Trial 14 Hari
@@ -723,10 +746,10 @@ export default function LandingPage() {
               Akses dashboard ProSphere AI sekarang juga dan rasakan kemudahan mengelola ribuan leads dalam satu layar terpadu.
             </p>
             <Link
-              href="/dashboard"
+              href={targetAppUrl}
               className="inline-flex items-center gap-2 bg-primary text-[#1f3700] font-bold px-8 py-4 rounded-xl text-base hover:opacity-90 transition-all shadow-[0_0_20px_rgba(158,233,57,0.4)]"
             >
-              <span>Akses Dashboard Sekarang</span>
+              <span>{ctaButtonText}</span>
               <Icon name="arrow_forward" size={18} />
             </Link>
           </div>
@@ -741,18 +764,61 @@ export default function LandingPage() {
             <span>· All Rights Reserved © 2026</span>
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="hover:text-primary transition-colors">
-              Dashboard
-            </Link>
-            <Link href="/devices" className="hover:text-primary transition-colors">
-              Devices
-            </Link>
-            <Link href="/crm" className="hover:text-primary transition-colors">
-              CRM
-            </Link>
-            <Link href="/ai-sales-agent" className="hover:text-primary transition-colors">
-              AI Agent
-            </Link>
+            {!user ? (
+              <>
+                <Link href="/login" className="hover:text-primary transition-colors">
+                  Portal Masuk
+                </Link>
+                <a href="#fitur" className="hover:text-primary transition-colors">
+                  Fitur
+                </a>
+                <a href="#harga" className="hover:text-primary transition-colors">
+                  Harga
+                </a>
+              </>
+            ) : user.role === 'STAFF_SALES_CS' ? (
+              <>
+                <Link href="/chat-history" className="hover:text-primary transition-colors">
+                  Chat History
+                </Link>
+                <Link href="/crm" className="hover:text-primary transition-colors">
+                  CRM Deals
+                </Link>
+                <Link href="/contacts" className="hover:text-primary transition-colors">
+                  Contacts
+                </Link>
+                <Link href="/bookings" className="hover:text-primary transition-colors">
+                  Bookings
+                </Link>
+              </>
+            ) : user.role === 'STAFF_MARKETING' ? (
+              <>
+                <Link href="/bulk-messages" className="hover:text-primary transition-colors">
+                  Bulk Messages
+                </Link>
+                <Link href="/templates" className="hover:text-primary transition-colors">
+                  Templates
+                </Link>
+                <Link href="/groups" className="hover:text-primary transition-colors">
+                  Audience Groups
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/dashboard" className="hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/devices" className="hover:text-primary transition-colors">
+                  Devices
+                </Link>
+                <Link href="/crm" className="hover:text-primary transition-colors">
+                  CRM
+                </Link>
+                <Link href="/ai-sales-agent" className="hover:text-primary transition-colors">
+                  AI Agent
+                </Link>
+              </>
+            )}
           </div>
           <div className="text-outline">
             Zenax Web Solutions · Digital Innovation Partner
