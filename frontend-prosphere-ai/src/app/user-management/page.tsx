@@ -44,6 +44,11 @@ export default function UserManagementPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // State untuk Konfirmasi Hapus Modal Interaktif & Feedback Banner
+  const [deleteModalStaff, setDeleteModalStaff] = useState<StaffUser | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionFeedback, setActionFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
   const fetchStaffData = async () => {
     setIsLoading(true);
     try {
@@ -129,32 +134,42 @@ export default function UserManagementPage() {
     }
   };
 
-  const handleDeleteStaff = async (id: string, name: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus akun staf "${name}"?`)) return;
-
+  const confirmDeleteStaff = async () => {
+    if (!deleteModalStaff) return;
+    setIsDeleting(true);
+    setActionFeedback(null);
     try {
-      const res = await api.deleteStaff(id);
+      const res = await api.deleteStaff(deleteModalStaff.id);
       if (!res.success) {
-        alert(res.message || 'Gagal menghapus staf');
-        return;
+        setActionFeedback({ type: 'error', message: res.message || 'Gagal menghapus staf.' });
+      } else {
+        setActionFeedback({ type: 'success', message: `Akun staf ${deleteModalStaff.name} berhasil dihapus.` });
+        setDeleteModalStaff(null);
+        await fetchStaffData();
       }
-      await fetchStaffData();
     } catch (err: any) {
-      alert(err.message || 'Gagal menghapus staf');
+      setActionFeedback({ type: 'error', message: err.message || 'Gagal menghapus staf.' });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleToggleStatus = async (staff: StaffUser) => {
     const newStatus = staff.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    setActionFeedback(null);
     try {
       const res = await api.updateStaff(staff.id, { status: newStatus });
       if (!res.success) {
-        alert(res.message || 'Gagal mengubah status staf');
+        setActionFeedback({ type: 'error', message: res.message || 'Gagal mengubah status staf.' });
         return;
       }
+      setActionFeedback({
+        type: 'success',
+        message: `Status staf ${staff.name} berhasil diubah menjadi ${newStatus === 'ACTIVE' ? 'Aktif' : 'Nonaktif'}.`,
+      });
       await fetchStaffData();
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah status staf');
+      setActionFeedback({ type: 'error', message: err.message || 'Gagal mengubah status staf.' });
     }
   };
 
@@ -242,6 +257,32 @@ export default function UserManagementPage() {
             </button>
           </div>
 
+          {/* In-App Feedback Banner (No alert popups) */}
+          {actionFeedback && (
+            <div
+              className={`p-3.5 rounded-2xl flex items-center justify-between text-xs font-semibold animate-fadeIn ${
+                actionFeedback.type === 'success'
+                  ? 'bg-primary/10 border border-primary/30 text-primary'
+                  : 'bg-error/10 border border-error/30 text-error'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon
+                  name={actionFeedback.type === 'success' ? 'check_circle' : 'error'}
+                  size={18}
+                />
+                <span>{actionFeedback.message}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActionFeedback(null)}
+                className="text-outline hover:text-on-surface"
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+          )}
+
           {/* TAB 1: USERS LIST */}
           {activeTab === 'users' && (
             <div className="bg-surface-container-low border border-outline-variant/30 rounded-2xl overflow-hidden shadow-xl">
@@ -321,7 +362,7 @@ export default function UserManagementPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => handleDeleteStaff(staff.id, staff.name)}
+                                onClick={() => setDeleteModalStaff(staff)}
                                 className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
                                 title="Hapus Staf"
                               >
@@ -502,6 +543,74 @@ export default function UserManagementPage() {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* INTERACTIVE CENTERED DELETE CONFIRMATION MODAL            */}
+          {/* ========================================================= */}
+          {deleteModalStaff && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+              <div className="bg-[#071d10] border border-outline-variant/30 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+                <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-error via-[#ff5449] to-error/30" />
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteModalStaff(null)}
+                  className="absolute top-4 right-4 text-outline hover:text-on-surface p-1.5 rounded-xl hover:bg-surface-container transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Icon name="close" size={20} />
+                </button>
+
+                <div className="w-16 h-16 rounded-2xl bg-error/10 border border-error/30 text-error flex items-center justify-center mx-auto mb-4 ring-8 ring-error/5 shadow-[0_0_25px_rgba(255,84,73,0.25)]">
+                  <Icon name="delete_forever" size={32} />
+                </div>
+
+                <h3 className="font-headline-sm text-xl font-extrabold text-on-surface text-center mb-2">
+                  Hapus Akun Staf?
+                </h3>
+                <p className="text-on-surface-variant text-sm text-center leading-relaxed mb-5">
+                  Apakah Anda yakin ingin menghapus akun staf{' '}
+                  <strong className="text-on-surface font-semibold">{deleteModalStaff.name}</strong> ({deleteModalStaff.email})?
+                </p>
+
+                <div className="p-3.5 rounded-2xl bg-[#03170b] border border-outline-variant/25 text-xs text-on-surface-variant flex items-start gap-2 mb-6">
+                  <Icon name="warning" size={16} className="text-warning shrink-0 mt-0.5" />
+                  <span>
+                    Tindakan ini tidak dapat dibatalkan. Pengguna tidak akan dapat mengakses ProSphere AI lagi setelah akun dihapus.
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => setDeleteModalStaff(null)}
+                    className="flex-1 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-semibold text-sm transition-colors text-center cursor-pointer disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={confirmDeleteStaff}
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-error to-[#d32f2f] hover:opacity-95 text-white font-bold text-sm transition-all shadow-[0_0_20px_rgba(255,84,73,0.35)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Menghapus...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="delete" size={16} />
+                        <span>Ya, Hapus Akun</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}

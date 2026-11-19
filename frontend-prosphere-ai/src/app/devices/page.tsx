@@ -25,6 +25,11 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // State untuk Modal Konfirmasi Putuskan Koneksi (Interactive Centered Modal)
+  const [disconnectModalOpen, setDisconnectModalOpen] = useState(false);
+  const [deviceToDisconnect, setDeviceToDisconnect] = useState<DeviceItem | null>(null);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+
   const loadDevices = async () => {
     setLoading(true);
     const data = await api.getDevices();
@@ -82,18 +87,26 @@ export default function DevicesPage() {
     }
   };
 
-  const handleDisconnect = async () => {
-    const confirm = window.confirm('Apakah Anda yakin ingin memutuskan koneksi sesi WhatsApp ini?');
-    if (!confirm) return;
+  const handleOpenDisconnectModal = (device?: DeviceItem) => {
+    setDeviceToDisconnect(device || devices[0] || null);
+    setDisconnectModalOpen(true);
+  };
 
+  const confirmDisconnect = async () => {
+    setIsDisconnecting(true);
     try {
       await api.disconnectDevice();
       setQrCodeData(null);
       setShowQR(false);
-      setFeedback('Sesi WhatsApp berhasil diputuskan.');
+      setFeedback('Sesi WhatsApp berhasil diputuskan secara aman.');
+      setDisconnectModalOpen(false);
+      setDeviceToDisconnect(null);
       await loadDevices();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setFeedback('Gagal memutuskan sesi: ' + (e?.message || 'Terjadi kendala server'));
+    } finally {
+      setIsDisconnecting(false);
     }
   };
 
@@ -258,8 +271,8 @@ export default function DevicesPage() {
                 </span>
                 <button
                   type="button"
-                  onClick={handleDisconnect}
-                  className="text-error hover:underline text-xs font-semibold flex items-center gap-1"
+                  onClick={() => handleOpenDisconnectModal(device)}
+                  className="text-error hover:text-error/80 px-2.5 py-1 rounded-lg bg-error/10 hover:bg-error/20 border border-error/20 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Icon name="power_settings_new" size={14} />
                   <span>Putuskan</span>
@@ -268,6 +281,101 @@ export default function DevicesPage() {
               <div className="absolute inset-x-0 bottom-0 h-0.5 bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* INTERACTIVE CENTERED CONFIRMATION MODAL: DISCONNECT       */}
+      {/* ========================================================= */}
+      {disconnectModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+          {/* Modal Container */}
+          <div className="bg-[#071d10] border border-outline-variant/30 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-[0_0_50px_rgba(0,0,0,0.8)] relative overflow-hidden">
+            {/* Top Danger Gradient Accent Line */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-error via-[#ff5449] to-error/30" />
+
+            {/* Close Button top-right */}
+            <button
+              type="button"
+              disabled={isDisconnecting}
+              onClick={() => {
+                if (!isDisconnecting) {
+                  setDisconnectModalOpen(false);
+                  setDeviceToDisconnect(null);
+                }
+              }}
+              className="absolute top-4 right-4 text-outline hover:text-on-surface p-1.5 rounded-xl hover:bg-surface-container transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Icon name="close" size={20} />
+            </button>
+
+            {/* Glowing Danger Icon */}
+            <div className="w-16 h-16 rounded-2xl bg-error/10 border border-error/30 text-error flex items-center justify-center mx-auto mb-4 ring-8 ring-error/5 shadow-[0_0_25px_rgba(255,84,73,0.25)]">
+              <Icon name="link_off" size={32} />
+            </div>
+
+            {/* Title & Description */}
+            <h3 className="font-headline-sm text-xl font-extrabold text-on-surface text-center mb-2">
+              Putuskan Sesi WhatsApp?
+            </h3>
+            <p className="text-on-surface-variant text-sm text-center leading-relaxed mb-5">
+              Apakah Anda yakin ingin memutuskan tautan sesi{' '}
+              <strong className="text-on-surface font-semibold">
+                {deviceToDisconnect?.phoneNumber || 'default-session'}
+              </strong>{' '}
+              dari sistem ProSphere AI?
+            </p>
+
+            {/* Consequence Notification Box */}
+            <div className="p-3.5 rounded-2xl bg-[#03170b] border border-outline-variant/25 text-xs text-on-surface-variant space-y-2 mb-6">
+              <div className="flex items-start gap-2 text-warning">
+                <Icon name="warning" size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  Respon pesan otomatis, AI Sales Agent, dan antrean kampanye siaran akan <strong>dihentikan sementara</strong> hingga perangkat ditautkan ulang.
+                </span>
+              </div>
+              <div className="flex items-start gap-2 text-secondary pt-1 border-t border-outline-variant/15">
+                <Icon name="check_circle" size={16} className="shrink-0 mt-0.5" />
+                <span>
+                  Riwayat pesan dan data CRM Anda tetap tersimpan dengan aman di database.
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={isDisconnecting}
+                onClick={() => {
+                  setDisconnectModalOpen(false);
+                  setDeviceToDisconnect(null);
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/30 text-on-surface font-semibold text-sm transition-colors text-center cursor-pointer disabled:opacity-50"
+              >
+                Batal, Pertahankan
+              </button>
+
+              <button
+                type="button"
+                disabled={isDisconnecting}
+                onClick={confirmDisconnect}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-error to-[#d32f2f] hover:opacity-95 text-white font-bold text-sm transition-all shadow-[0_0_20px_rgba(255,84,73,0.35)] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isDisconnecting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Memutuskan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="power_settings_new" size={16} />
+                    <span>Ya, Putuskan Sesi</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
       </DashboardShell>
