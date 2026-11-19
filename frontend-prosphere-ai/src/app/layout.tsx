@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { PreloaderProvider } from '@/components/ui/PreloaderProvider';
+import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
   title: 'ProSphere AI - Dashboard',
@@ -46,7 +47,9 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary/20 selection:text-primary min-h-screen">
-        <PreloaderProvider>{children}</PreloaderProvider>
+        <PreloaderProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </PreloaderProvider>
       </body>
     </html>
   );

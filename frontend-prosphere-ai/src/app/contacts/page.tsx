@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Icon } from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 
@@ -43,7 +44,7 @@ export default function ContactsPage() {
     const res = await api.createContact({
       name: newName,
       phoneNumber: newPhone,
-      tags: [newTag],
+      tags: newTag,
     });
 
     if (res && res.success) {
@@ -60,7 +61,8 @@ export default function ContactsPage() {
   );
 
   return (
-    <DashboardShell>
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'STAFF_SALES_CS']}>
+      <DashboardShell>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
         <div>
           <div className="flex items-center gap-space-xs">
@@ -254,5 +256,6 @@ export default function ContactsPage() {
         </div>
       )}
     </DashboardShell>
+  </RoleGuard>
   );
 }

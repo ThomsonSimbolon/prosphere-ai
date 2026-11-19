@@ -3,11 +3,15 @@ import { Server } from 'socket.io';
 import { createApp } from './app.js';
 import { ENV } from './config/env.js';
 import { connectDatabase } from './config/prisma.js';
+import { seedSuperAdmin } from './modules/auth/auth.service.js';
 import { whatsappService } from './modules/whatsapp/whatsapp.service.js';
 
 async function bootstrap() {
   // 1. Connect to MySQL Database via Prisma
   await connectDatabase();
+
+  // 1.1 Bootstrap Super Admin if not exists
+  await seedSuperAdmin();
 
   // 2. Initialize Express Application
   const app = createApp();

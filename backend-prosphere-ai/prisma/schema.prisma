@@ -169,3 +169,32 @@ model ScheduledJob {
 
   @@map("scheduled_jobs")
 }
+
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         String        @default("STAFF_SALES_CS") // SUPER_ADMIN | STAFF_SALES_CS | STAFF_MARKETING
+  status       String        @default("ACTIVE")         // ACTIVE | INACTIVE
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  activityLogs ActivityLog[]
+
+  @@map("users")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  actorName   String
+  actorEmail  String
+  action      String   // LOGIN | LOGOUT | USER_CREATE | USER_UPDATE | USER_DELETE | WA_CONNECT | WA_DISCONNECT | AI_UPDATE | ACCESS_DENIED
+  details     String?  @db.Text
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@map("activity_logs")
+}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Icon } from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 
@@ -91,7 +92,8 @@ export default function ChatHistoryPage() {
   );
 
   return (
-    <DashboardShell>
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'STAFF_SALES_CS']}>
+      <DashboardShell>
       {/* Header */}
       <div className="flex items-center justify-between gap-space-md mb-space-md">
         <div>
@@ -302,5 +304,6 @@ export default function ChatHistoryPage() {
         </div>
       )}
     </DashboardShell>
+  </RoleGuard>
   );
 }

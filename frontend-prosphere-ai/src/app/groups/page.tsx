@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Icon } from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 
@@ -49,7 +50,8 @@ export default function GroupsPage() {
   };
 
   return (
-    <DashboardShell>
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'STAFF_MARKETING']}>
+      <DashboardShell>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
         <div>
           <div className="flex items-center gap-space-xs">
@@ -198,5 +200,6 @@ export default function GroupsPage() {
         </div>
       )}
     </DashboardShell>
+  </RoleGuard>
   );
 }

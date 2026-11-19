@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Icon } from '@/components/ui/Icon';
 import { Badge } from '@/components/ui/Badge';
 import { api } from '@/lib/api';
@@ -95,7 +96,8 @@ export default function DevicesPage() {
   };
 
   return (
-    <DashboardShell>
+    <RoleGuard allowedRoles={['SUPER_ADMIN']}>
+      <DashboardShell>
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
         <div>
@@ -266,6 +268,7 @@ export default function DevicesPage() {
           ))}
         </div>
       )}
-    </DashboardShell>
+      </DashboardShell>
+    </RoleGuard>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import {
   PageHeader,
   KpiMetricsGrid,
@@ -44,41 +45,43 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <DashboardShell>
-      {/* Page Header with working Refresh calling live backend API */}
-      <PageHeader onRefresh={loadData} />
+    <RoleGuard allowedRoles={['SUPER_ADMIN']}>
+      <DashboardShell>
+        {/* Page Header with working Refresh calling live backend API */}
+        <PageHeader onRefresh={loadData} />
 
-      {/* Row 1: 5 Equal-Width KPI Stat Cards */}
-      <KpiMetricsGrid metrics={metrics} />
+        {/* Row 1: 5 Equal-Width KPI Stat Cards */}
+        <KpiMetricsGrid metrics={metrics} />
 
-      {/* Row 2 & 3: Asymmetric Main Grid (~66% / ~34%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
-        {/* Left Column (8 cols ~ 66%) */}
-        <div className="lg:col-span-8 flex flex-col gap-space-md">
-          {/* Main Card: Message Analytics with 7-Day Chart & 3-Col Summary */}
-          <MessageAnalyticsCard data={chartData} summary={summary} />
+        {/* Row 2 & 3: Asymmetric Main Grid (~66% / ~34%) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+          {/* Left Column (8 cols ~ 66%) */}
+          <div className="lg:col-span-8 flex flex-col gap-space-md">
+            {/* Main Card: Message Analytics with 7-Day Chart & 3-Col Summary */}
+            <MessageAnalyticsCard data={chartData} summary={summary} />
 
-          {/* 2-Column Sub-Card Split (Avg Order & Devices) */}
-          <SubMetricsGrid
-            avgOrderValue={subMetrics.avgOrder}
-            deliveredCount={subMetrics.deliveredCount}
-            devicesCount={subMetrics.devicesCount}
-            onlineDevicesCount={subMetrics.onlineDevicesCount}
-          />
+            {/* 2-Column Sub-Card Split (Avg Order & Devices) */}
+            <SubMetricsGrid
+              avgOrderValue={subMetrics.avgOrder}
+              deliveredCount={subMetrics.deliveredCount}
+              devicesCount={subMetrics.devicesCount}
+              onlineDevicesCount={subMetrics.onlineDevicesCount}
+            />
 
-          {/* Bottom Section Bar: Booking Activity Banner */}
-          <BookingActivityBanner />
+            {/* Bottom Section Bar: Booking Activity Banner */}
+            <BookingActivityBanner />
+          </div>
+
+          {/* Right Column (4 cols ~ 34%) */}
+          <div className="lg:col-span-4 flex flex-col gap-space-md">
+            {/* Top Card: Status Breakdown & Overall Progress Bar */}
+            <StatusCard items={statusList} />
+
+            {/* Bottom Card: Order Statistics Stacked List */}
+            <OrderStatisticsCard items={orderStats} />
+          </div>
         </div>
-
-        {/* Right Column (4 cols ~ 34%) */}
-        <div className="lg:col-span-4 flex flex-col gap-space-md">
-          {/* Top Card: Status Breakdown & Overall Progress Bar */}
-          <StatusCard items={statusList} />
-
-          {/* Bottom Card: Order Statistics Stacked List */}
-          <OrderStatisticsCard items={orderStats} />
-        </div>
-      </div>
-    </DashboardShell>
+      </DashboardShell>
+    </RoleGuard>
   );
 }

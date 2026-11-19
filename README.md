@@ -238,6 +238,20 @@ Buka browser Anda di: **[http://localhost:5173](http://localhost:5173)**.
 
 ---
 
+## 🔐 Sistem Role-Based Access Control (RBAC) & Kredensial Akun
+
+ProSphere AI menerapkan sistem keamanan berlapis (*Defense in Depth*) dengan 3 Role utama:
+
+| Role | Akun Default | Password | Akses Menu |
+| :--- | :--- | :--- | :--- |
+| **Super Admin** | `admin@prosphere.ai` | `admin123456` | Akses Penuh (100%), Devices QR, AI Settings, User Management, Activity Logs |
+| **Staff Sales & CS** | `sales@prosphere.ai` | `sales123456` | Chat History, CRM Pipeline, Contacts, Bookings |
+| **Staff Marketing** | `marketing@prosphere.ai` | `marketing123456` | Bulk Messages Broadcast, Templates, Contact Groups |
+
+*Catatan: Tombol Quick-Fill akun demo tersedia langsung di halaman login (`/login`) untuk memudahkan pengujian.*
+
+---
+
 ## 🛠️ Perintah Manajemen Database (NPM Scripts)
 
 Di dalam folder `backend-prosphere-ai`, tersedia perintah cepat:

@@ -1,14 +1,102 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('prosphere_token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
+  return headers;
+};
+
 export const api = {
+  // 0. Auth & Staff Management
+  async getStaff() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch (err) {
+      console.warn('API error fetching staff:', err);
+      return [];
+    }
+  },
+
+  async createStaff(data: { name: string; email: string; password: string; role: string }) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error creating staff:', err);
+      return { success: false, message: 'Gagal membuat staff' };
+    }
+  },
+
+  async updateStaff(id: string, data: any) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error updating staff:', err);
+      return { success: false, message: 'Gagal memperbarui staff' };
+    }
+  },
+
+  async deleteStaff(id: string) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error deleting staff:', err);
+      return { success: false, message: 'Gagal menghapus staff' };
+    }
+  },
+
+  async getActivityLogs(limit = 50) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/activity-logs?limit=${limit}`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch (err) {
+      console.warn('API error fetching activity logs:', err);
+      return [];
+    }
+  },
+
   // 1. Analytics & Dashboard
   async getDashboardTelemetry() {
     try {
-      const res = await fetch(`${API_BASE_URL}/analytics/dashboard`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/analytics/dashboard`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
       return json.success ? json.data : null;
     } catch (err) {
-      console.warn('API error fetching dashboard telemetry, using local fallback:', err);
+      console.warn('API error fetching dashboard telemetry:', err);
       return null;
     }
   },
@@ -16,7 +104,10 @@ export const api = {
   // 2. CRM & Pipeline
   async getCrmPipeline() {
     try {
-      const res = await fetch(`${API_BASE_URL}/crm/pipeline`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/crm/pipeline`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
       return json.success ? json.data : null;
     } catch (err) {
@@ -29,7 +120,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/crm/leads`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -39,10 +130,27 @@ export const api = {
     }
   },
 
+  async updateLeadStage(leadId: string, stage: string) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/crm/leads/${leadId}/stage`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ stage }),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error updating lead stage:', err);
+      return { success: false };
+    }
+  },
+
   // 3. WhatsApp Devices & Messages
   async getDevices() {
     try {
-      const res = await fetch(`${API_BASE_URL}/whatsapp/devices`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/whatsapp/devices`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
       return json.success ? json.data : null;
     } catch (err) {
@@ -53,7 +161,10 @@ export const api = {
 
   async startDeviceSession() {
     try {
-      const res = await fetch(`${API_BASE_URL}/whatsapp/session/start`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/whatsapp/session/start`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
       return await res.json();
     } catch (err) {
       console.error('API error starting device session:', err);
@@ -63,7 +174,10 @@ export const api = {
 
   async disconnectDevice() {
     try {
-      const res = await fetch(`${API_BASE_URL}/whatsapp/disconnect`, { method: 'POST' });
+      const res = await fetch(`${API_BASE_URL}/whatsapp/disconnect`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+      });
       return await res.json();
     } catch (err) {
       console.error('API error disconnecting device:', err);
@@ -71,37 +185,44 @@ export const api = {
     }
   },
 
-  async sendWhatsAppMessage(phone: string, message: string) {
+  async sendSingleMessage(to: string, message: string) {
     try {
       const res = await fetch(`${API_BASE_URL}/whatsapp/send`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, message }),
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ to, message }),
       });
       return await res.json();
     } catch (err) {
-      console.error('API error sending message:', err);
-      return { success: false, message: 'Gagal terhubung ke backend server' };
+      console.error('API error sending single message:', err);
+      return { success: false };
     }
+  },
+
+  async sendWhatsAppMessage(to: string, message: string) {
+    return this.sendSingleMessage(to, message);
   },
 
   // 4. Contacts & Groups
   async getContacts() {
     try {
-      const res = await fetch(`${API_BASE_URL}/contacts`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/contacts`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching contacts:', err);
-      return null;
+      return [];
     }
   },
 
-  async createContact(data: { name: string; phoneNumber: string; tags?: string[]; groupId?: string }) {
+  async createContact(data: { name: string; phoneNumber: string; tags?: string; groupId?: string }) {
     try {
       const res = await fetch(`${API_BASE_URL}/contacts`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -113,12 +234,15 @@ export const api = {
 
   async getGroups() {
     try {
-      const res = await fetch(`${API_BASE_URL}/contacts/groups`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/contacts/groups`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching groups:', err);
-      return null;
+      return [];
     }
   },
 
@@ -126,7 +250,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/contacts/groups`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -139,20 +263,23 @@ export const api = {
   // 5. Bookings
   async getBookings() {
     try {
-      const res = await fetch(`${API_BASE_URL}/bookings`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/bookings`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching bookings:', err);
-      return null;
+      return [];
     }
   },
 
-  async createBooking(data: { customerName: string; customerPhone?: string; serviceName: string; bookingDate: string }) {
+  async createBooking(data: { clientName: string; clientPhone: string; serviceName: string; scheduledAt: string }) {
     try {
       const res = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -165,12 +292,15 @@ export const api = {
   // 6. Templates
   async getTemplates() {
     try {
-      const res = await fetch(`${API_BASE_URL}/templates`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/templates`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching templates:', err);
-      return null;
+      return [];
     }
   },
 
@@ -178,7 +308,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/templates`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -188,63 +318,32 @@ export const api = {
     }
   },
 
-  // 7. AI Settings & Simulator
-  async getAiSettings() {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/settings`, { cache: 'no-store' });
-      const json = await res.json();
-      return json.success ? json.data : null;
-    } catch (err) {
-      console.warn('API error fetching AI settings:', err);
-      return null;
-    }
-  },
-
-  async updateAiSettings(data: { modelName?: string; temperature?: number; systemPrompt?: string }) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/settings`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      return await res.json();
-    } catch (err) {
-      console.error('API error updating AI settings:', err);
-      return { success: false };
-    }
-  },
-
-  async simulateChat(message: string) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/ai/simulate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
-      return await res.json();
-    } catch (err) {
-      console.error('API error simulating chat:', err);
-      return { success: false };
-    }
-  },
-
-  // 8. Broadcast Campaigns
+  // 7. Broadcast Campaigns
   async getCampaigns() {
     try {
-      const res = await fetch(`${API_BASE_URL}/broadcast/campaigns`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/broadcast/campaigns`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching campaigns:', err);
-      return null;
+      return [];
     }
   },
 
-  async createCampaign(data: { title: string; targetGroup: string; messageText: string; delaySeconds?: number }) {
+  async createCampaign(data: {
+    title: string;
+    targetGroup: string;
+    messageText: string;
+    delaySeconds?: number;
+    contactIds?: string[];
+  }) {
     try {
       const res = await fetch(`${API_BASE_URL}/broadcast/campaigns`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -254,15 +353,65 @@ export const api = {
     }
   },
 
-  // 9. Chatbot Flows
-  async getFlows() {
+  // 8. AI Settings & Simulator
+  async getAiSettings() {
     try {
-      const res = await fetch(`${API_BASE_URL}/flows`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/ai/settings`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
       return json.success ? json.data : null;
     } catch (err) {
-      console.warn('API error fetching flows:', err);
+      console.warn('API error fetching AI settings:', err);
       return null;
+    }
+  },
+
+  async updateAiSettings(data: { modelName?: string; temperature?: number; systemPrompt?: string; humanFallback?: boolean }) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ai/settings`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error updating AI settings:', err);
+      return { success: false };
+    }
+  },
+
+  async simulateAiChat(message: string, history?: Array<{ role: string; content: string }>) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/ai/simulate`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ message, history }),
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('API error simulating AI chat:', err);
+      return { success: false, reply: 'Maaf, terjadi kesalahan saat menghubungi AI.' };
+    }
+  },
+
+  async simulateChat(message: string, history?: Array<{ role: string; content: string }>) {
+    return this.simulateAiChat(message, history);
+  },
+
+  // 9. Chatbot Flows
+  async getFlows() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/flows`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch (err) {
+      console.warn('API error fetching flows:', err);
+      return [];
     }
   },
 
@@ -270,7 +419,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/flows`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -282,7 +431,10 @@ export const api = {
 
   async toggleFlow(id: string) {
     try {
-      const res = await fetch(`${API_BASE_URL}/flows/${id}/toggle`, { method: 'PATCH' });
+      const res = await fetch(`${API_BASE_URL}/flows/${id}/toggle`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
       return await res.json();
     } catch (err) {
       console.error('API error toggling flow:', err);
@@ -293,12 +445,15 @@ export const api = {
   // 10. Scheduled Jobs
   async getJobs() {
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/jobs`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
       console.warn('API error fetching jobs:', err);
-      return null;
+      return [];
     }
   },
 
@@ -306,7 +461,7 @@ export const api = {
     try {
       const res = await fetch(`${API_BASE_URL}/jobs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(data),
       });
       return await res.json();
@@ -318,7 +473,10 @@ export const api = {
 
   async toggleJob(id: string) {
     try {
-      const res = await fetch(`${API_BASE_URL}/jobs/${id}/toggle`, { method: 'PATCH' });
+      const res = await fetch(`${API_BASE_URL}/jobs/${id}/toggle`, {
+        method: 'PATCH',
+        headers: getAuthHeaders(),
+      });
       return await res.json();
     } catch (err) {
       console.error('API error toggling job:', err);
@@ -326,39 +484,53 @@ export const api = {
     }
   },
 
-  // 11. Chat History & Real-Time Messaging
-  async getChats() {
+  // 11. Chat History & Real-time Threads
+  async getChatThreads() {
     try {
-      const res = await fetch(`${API_BASE_URL}/chats`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE_URL}/chats`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
       const json = await res.json();
-      return json.success ? json.data : null;
+      return json.success ? json.data : [];
     } catch (err) {
-      console.warn('API error fetching chats:', err);
-      return null;
+      console.warn('API error fetching chat threads:', err);
+      return [];
+    }
+  },
+
+  async getChats() {
+    return this.getChatThreads();
+  },
+
+  async getContactMessages(contactId: string) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/chats/${contactId}/messages`, {
+        headers: getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const json = await res.json();
+      return json.success ? json.data : [];
+    } catch (err) {
+      console.warn('API error fetching messages for contact:', err);
+      return [];
     }
   },
 
   async getChatMessages(contactId: string) {
-    try {
-      const res = await fetch(`${API_BASE_URL}/chats/${contactId}/messages`, { cache: 'no-store' });
-      const json = await res.json();
-      return json.success ? json.data : null;
-    } catch (err) {
-      console.warn('API error fetching messages:', err);
-      return null;
-    }
+    return this.getContactMessages(contactId);
   },
 
   async sendChatMessage(contactId: string, content: string) {
     try {
       const res = await fetch(`${API_BASE_URL}/chats/${contactId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ content }),
       });
       return await res.json();
     } catch (err) {
-      console.error('API error sending chat message:', err);
+      console.error('API error sending message:', err);
       return { success: false };
     }
   },

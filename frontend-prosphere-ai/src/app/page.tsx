@@ -74,13 +74,13 @@ export default function LandingPage() {
           {/* Right Action CTA */}
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard"
+              href="/login"
               className="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-on-surface hover:text-primary transition-colors"
             >
-              <span>Live Telemetry</span>
+              <span>Portal Masuk</span>
             </Link>
             <Link
-              href="/dashboard"
+              href="/login"
               className="flex items-center gap-2 bg-primary text-[#1f3700] font-bold px-4 py-2.5 rounded-xl hover:opacity-90 transition-all shadow-[0_0_20px_rgba(158,233,57,0.35)] text-sm"
             >
               <span>Buka Dashboard</span>

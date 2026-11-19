@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { DashboardShell } from '@/components/layout/DashboardShell';
+import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Icon } from '@/components/ui/Icon';
 import { api } from '@/lib/api';
 
@@ -68,7 +69,8 @@ export default function CrmPage() {
   };
 
   return (
-    <DashboardShell>
+    <RoleGuard allowedRoles={['SUPER_ADMIN', 'STAFF_SALES_CS']}>
+      <DashboardShell>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md mb-space-lg">
         <div>
@@ -194,5 +196,6 @@ export default function CrmPage() {
         ))}
       </div>
     </DashboardShell>
+  </RoleGuard>
   );
 }
